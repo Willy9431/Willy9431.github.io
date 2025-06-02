@@ -92,6 +92,13 @@
     const outputText = document.getElementById('outputText');
     const shiftError = document.getElementById('shiftError');
 
+    const DEV_IP = '172.20.10.2';
+
+    const apiBaseURL = `http://${DEV_IP}:8000`
+
+    const encryptUrl = `${apiBaseURL}/api/encrypt`;
+    const autoDecryptUrl = `${apiBaseURL}/api/auto-decrypt`;
+
     function showError(message) {
       shiftError.textContent = message;
       shiftError.classList.remove('hidden');
@@ -116,7 +123,7 @@
       clearError();
 
       try {
-        const res = await fetch('http://0.0.0.0:8000/api/encrypt', {
+        const res = await fetch(encryptUrl, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ text: text, shift: shift })
@@ -136,7 +143,7 @@
       }
 
       try {
-        const res = await fetch('http://0.0.0.0:8000/api/auto-decrypt', {
+        const res = await fetch(autoDecryptUrl, {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ text: text })
