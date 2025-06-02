@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Caesar Cipher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align to top for longer content */
+            min-height: 100vh;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            padding: 1rem;
+            overflow-y: auto; /* Allow scrolling if content overflows */
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.75rem; /* Tailwind rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Tailwind shadow-lg */
+            width: 100%;
+            max-width: 700px; 
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        label {
+            font-weight: 500; /* Tailwind medium */
+        }
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            border: 1px solid #d1d5db; /* Tailwind gray-300 */
+            padding: 0.75rem 1rem;
+            width: 100%;
+            margin-top: 0.25rem;
+            margin-bottom: 1rem;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #4f46e5; /* Tailwind indigo-600 */
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); /* Tailwind indigo-600 focus ring */
+            outline: none;
+        }
+        button {
+            background-color: #4f46e5; /* Tailwind indigo-600 */
+            color: white;
+            font-weight: 600; /* Tailwind semibold */
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+            width: 100%;
+            margin-top: 0.5rem; 
+        }
+        button:hover {
+            background-color: #4338ca; /* Tailwind indigo-700 */
+        }
+        button.secondary { 
+            background-color: #6b7280; /* Tailwind gray-500 */
+        }
+        button.secondary:hover {
+            background-color: #4b5563; /* Tailwind gray-600 */
+        }
+        .output-area {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #e5e7eb; /* Tailwind gray-200 */
+            border-radius: 0.375rem; /* Tailwind rounded-md */
+            min-height: 100px;
+            word-wrap: break-word;
+            white-space: pre-wrap; 
+            max-height: 400px; 
+            overflow-y: auto; 
+        }
+        .error-message {
+            color: #dc2626; /* Tailwind red-600 */
+            font-size: 0.875rem; /* Tailwind text-sm */
+            margin-top: -0.75rem;
+            margin-bottom: 1rem;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column; 
+            gap: 0.5rem; 
+            margin-bottom: 1.5rem; /* Added margin-bottom for spacing */
+        }
+        @media (min-width: 640px) { /* sm breakpoint in Tailwind */
+            .button-group {
+                flex-direction: row; 
+            }
+            .button-group button {
+                width: auto; 
+                flex-grow: 1; 
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Caesar Cipher</h1>
+
+        <div>
+            <label for="inputText" class="block text-gray-700">Enter Text:</label>
+            <textarea id="inputText" rows="4" placeholder="Type your message here..." class="resize-none"></textarea>
+        </div>
+
+        <div>
+            <label for="shiftValue" class="block text-gray-700">Shift Value (Key for Encryption):</label>
+            <input type="number" id="shiftValue" value="3" min="0" max="25" placeholder="Enter 0-25">
+            <p id="shiftError" class="error-message hidden"></p>
+        </div>
+
+        <div class="button-group mt-6"> 
+            <button id="encryptButton">Encrypt with Key</button>
+            <button id="autoDecryptButton" class="secondary">Auto-Decrypt (Guess Key)</button>
+        </div>
+
+        <div class="mt-8">
+            <label for="outputText" class="block text-gray-700 font-semibold">Result:</label>
+            <div id="outputText" class="output-area text-gray-700">Your result will appear here.</div>
+        </div>
+
+        <div id="messageBox" class="fixed top-5 right-5 bg-red-500 text-white p-4 rounded-md shadow-lg hidden transition-opacity duration-300 z-50">
+            <p id="messageText"></p>
+            <button id="closeMessage" class="ml-2 text-sm font-semibold underline">Close</button>
+        </div>
+
+    </div>
+
+    <script>
+        // Get DOM elements
+        const inputTextElement = document.getElementById('inputText');
+        const shiftValueElement = document.getElementById('shiftValue');
+        const encryptButton = document.getElementById('encryptButton'); 
+        const autoDecryptButton = document.getElementById('autoDecryptButton'); 
+        const outputTextElement = document.getElementById('outputText');
+        const shiftErrorElement = document.getElementById('shiftError');
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const closeMessageButton = document.getElementById('closeMessage');
+
+        // Common English words for guessing heuristic (lowercase)
+        const COMMON_WORDS = [
+            "the", "be", "to", "of", "and", "a", "in", "that", "have", "i", "it", "for", "not", 
+            "on", "with", "he", "as", "you", "do", "at", "this", "but", "his", "by", "from",
+            "they", "we", "say", "her", "she", "or", "an", "will", "my", "one", "all", "would",
+            "there", "their", "what", "so", "up", "out", "if", "about", "who", "get", "which",
+            "go", "me", "is", "are", "was", "were"
+        ];
+
+        
+
+
+        /**
+         * Caesar Cipher function.
+         * @param {string} text - The input string.
+         * @param {number} shift - The number of positions to shift.
+         * @param {string} mode - 'encrypt' or 'decrypt'.
+         * @returns {string} - The processed string.
+         */
+        function caesarCipherJS(text, shift, mode) {
+            let result = [];
+            let effectiveShift = shift;
+            if (mode === 'decrypt') {
+                effectiveShift = -shift; 
+            }
+            
+            let actual_shift = effectiveShift % 26;
+            if (actual_shift < 0) {
+                actual_shift += 26; 
+            }
+
+            for (let i = 0; i < text.length; i++) {
+                let char = text[i];
+                let charCode = text.charCodeAt(i);
+
+                if (char >= 'A' && char <= 'Z') {
+                    let start = 'A'.charCodeAt(0);
+                    let shiftedCharCode = (charCode - start + actual_shift) % 26 + start;
+                    result.push(String.fromCharCode(shiftedCharCode));
+                }
+                else if (char >= 'a' && char <= 'z') {
+                    let start = 'a'.charCodeAt(0);
+                    let shiftedCharCode = (charCode - start + actual_shift) % 26 + start;
+                    result.push(String.fromCharCode(shiftedCharCode));
+                }
+                else {
+                    result.push(char); 
+                }
+            }
+            return result.join("");
+        }
+
+        /**
+         * Counts common English words in a given text.
+         * @param {string} text - The text to analyze.
+         * @returns {number} - The count of common words found.
+         */
+        function countCommonWords(text) {
+            const lowerText = text.toLowerCase();
+            // Split by non-alphabetic characters to get words
+            const words = lowerText.split(/[^a-z']+/); 
+            let count = 0;
+            words.forEach(word => {
+                if (COMMON_WORDS.includes(word)) {
+                    count++;
+                }
+            });
+            return count;
+        }
+
+        // Event listener for the "Encrypt with Key" button
+        encryptButton.addEventListener('click', () => {
+            const text = inputTextElement.value;
+            const shiftInput = shiftValueElement.value;
+            
+            if (!text) {
+                showMessage("Input text cannot be empty for encryption.", "error");
+                outputTextElement.textContent = "Please enter some text to encrypt.";
+                return;
+            }
+
+            if (shiftInput === "" || isNaN(parseInt(shiftInput))) {
+                shiftErrorElement.textContent = "Shift value must be a number.";
+                shiftErrorElement.classList.remove('hidden');
+                showMessage("Invalid shift value. Please enter a number for encryption.", "error");
+                return;
+            }
+            
+            const shift = parseInt(shiftInput);
+
+            if (shift < 0 || shift > 25) {
+                 shiftErrorElement.textContent = "Shift value must be between 0 and 25.";
+                 shiftErrorElement.classList.remove('hidden');
+                 showMessage("Shift value must be between 0 and 25 for encryption.", "error");
+                 return;
+            }
+            
+            shiftErrorElement.classList.add('hidden'); 
+
+            const processedText = caesarCipherJS(text, shift, 'encrypt'); // Mode is always 'encrypt'
+            outputTextElement.innerHTML = `<strong>Encrypted with key ${shift}:</strong>\n${processedText}`;
+            showMessage("Text encrypted successfully!", "success");
+        });
+
+        // Event listener for the "Auto-Decrypt (Guess Key)" button
+        autoDecryptButton.addEventListener('click', () => {
+            const text = inputTextElement.value;
+            if (!text) {
+                showMessage("Input text cannot be empty to attempt auto-decryption.", "error");
+                outputTextElement.textContent = "Please enter some ciphertext to decrypt.";
+                return;
+            }
+
+            let bestGuess = {
+                key: -1,
+                text: "",
+                score: 0 
+            };
+
+            for (let key = 0; key < 26; key++) {
+                const decryptedText = caesarCipherJS(text, key, 'decrypt');
+                const score = countCommonWords(decryptedText);
+
+                if (score > bestGuess.score) {
+                    bestGuess.key = key;
+                    bestGuess.text = decryptedText;
+                    bestGuess.score = score;
+                }
+            }
+
+            if (bestGuess.key !== -1 && bestGuess.score > 0) {
+                outputTextElement.innerHTML = `<strong>Guessed Plaintext (Key ${bestGuess.key}):</strong>\n${bestGuess.text}\n<em class="text-sm text-gray-600">(Based on common English word count: ${bestGuess.score})</em>`;
+                showMessage(`Successfully guessed decryption with key ${bestGuess.key}.`, "success");
+            } else if (bestGuess.key !== -1 && bestGuess.score === 0 && text.length > 0) {
+                outputTextElement.innerHTML = `<strong>Potentially Decrypted (Key ${bestGuess.key}):</strong>\n${bestGuess.text}\n<em class="text-sm text-gray-600">(Could not confidently identify English words. Displaying result for key ${bestGuess.key}.)</em>`;
+                showMessage(`Could not find common English words. Displaying best attempt (key ${bestGuess.key}).`, "info");
+            }
+            else {
+                outputTextElement.textContent = "Could not confidently decrypt the text or find a likely key. The text might not be English or is too short.";
+                showMessage("Auto-decryption could not find a confident match.", "error");
+            }
+        });
+
+
+        // Add listeners to clear error messages on input change
+        shiftValueElement.addEventListener('input', () => {
+            if (!shiftErrorElement.classList.contains('hidden')) {
+                shiftErrorElement.classList.add('hidden');
+            }
+        });
+        inputTextElement.addEventListener('input', () => {
+             const placeholderText = "Your result will appear here.";
+             const errorPlaceholders = ["Please enter some text to encrypt.", "Please enter some ciphertext to decrypt."];
+             if (errorPlaceholders.includes(outputTextElement.textContent) || outputTextElement.textContent === placeholderText) {
+                outputTextElement.textContent = placeholderText;
+             }
+        });
+
+    </script>
+</body>
+</html>
